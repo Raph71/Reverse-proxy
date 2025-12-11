@@ -1,0 +1,23 @@
+services:
+  dvwa:
+    image: vulnerables/web-dvwa
+    container_name: dvwa
+    restart: unless-stopped
+    networks:
+      - dvwa-net
+
+  reverse-proxy:
+    build:
+      context: ./reverse-proxy
+      dockerfile: Dockerfile
+    container_name: reverse-proxy
+    ports:
+      - "80:80"
+    depends_on:
+      - dvwa
+    networks:
+      - dvwa-net
+
+networks:
+  dvwa-net:
+    driver: bridge
