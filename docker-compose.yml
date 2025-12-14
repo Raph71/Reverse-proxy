@@ -1,4 +1,5 @@
 services:
+  ### DVWA Service ###
   dvwa:
     image: vulnerables/web-dvwa
     container_name: dvwa
@@ -6,6 +7,7 @@ services:
     networks:
       - dvwa-net
 
+  ### Reverse Proxy Service ###
   reverse-proxy:
     build:
       context: ./reverse-proxy
@@ -17,7 +19,72 @@ services:
       - dvwa
     networks:
       - dvwa-net
+    volumes:
+      - nginx-logs:/var/log/nginx
+
+  ### Elasticsearch Service ###
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - dvwa-net
+
+  ### logstash Service ###
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.4
+    container_name: logstash
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ./elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "5044:5044" # Beats input
+    networks:
+      - dvwa-net
+
+  ### Kibana Service ###
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: kibana
+    depends_on:
+      - elasticsearch
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - dvwa-net
+  
+  ### Filebeat Service ###
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.13.4
+    container_name: filebeat
+    user: root
+    depends_on:
+      - logstash
+    volumes:
+      - ./elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - nginx-logs:/var/log/nginx:ro
+    networks:
+      - dvwa-net
+
 
 networks:
   dvwa-net:
     driver: bridge
+
+volumes:
+  nginx-logs:
+  es-data:
