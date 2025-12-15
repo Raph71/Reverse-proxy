@@ -22,6 +22,22 @@ services:
     volumes:
       - nginx-logs:/var/log/nginx
 
+### WAF reverse Proxy Service ###
+  waf-reverse-proxy:
+    image: owasp/modsecurity-crs:4.21.0-nginx-alpine-202512071012
+    user: "0:0"
+    container_name: waf-reverse-proxy
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - dvwa
+    networks:
+      - dvwa-net
+    volumes:
+      - nginx-logs:/var/log/nginx
+    environment:
+      - BACKEND=http://dvwa
   ### Elasticsearch Service ###
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
